@@ -50,6 +50,7 @@ def test_wb_get_orders(wb_client):
     rids = {order_fbs.get('rid') for order_fbs in wb_orders_fbs}
     print('FBS', len(wb_orders_fbs))
     wb_orders_fbo = [order for order in wb_orders
-                     if order.get('orderType') == 'Клиентский' and order.get('srid') not in rids]
+                     if order.get('orderType') == 'Клиентский' and not order.get('isCancel')
+                     and order.get('srid') not in rids]
     print('FBO', len(wb_orders_fbo))
     assert wb_orders_fbs and wb_orders_fbo
