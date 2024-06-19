@@ -136,12 +136,12 @@ def get_logistics(KTR, TARIFF_FOR_BASE_L, TARIFF_BASE, TARIFF_OVER_BASE, WH_COEF
     return logistics
 
 
-def get_order_data_fbo(order, product_, base_dict, acquiring=1.5):
+def get_order_data_fbo(order, product, base_dict, acquiring=1.5):
     wb_prices_dict = base_dict['wb_prices_dict']
     logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name=order.get('warehouseName', 'Коледино'))
 
     nm_id = order.get('nmId', '')
-    sale_prices = product_.get('salePrices', [])
+    sale_prices = product.get('salePrices', [])
     prices_dict = create_prices_dict(sale_prices)
 
     # Получение цены
@@ -163,7 +163,7 @@ def get_order_data_fbo(order, product_, base_dict, acquiring=1.5):
     cost_price = cost_price_c / 100
     order_price = round(order.get('finishedPrice', 0.0), 1)
 
-    attributes = product_.get('attributes', [])
+    attributes = product.get('attributes', [])
     attributes_dict = create_attributes_dict(attributes)
     volume = get_product_volume(attributes_dict)
 
@@ -189,12 +189,12 @@ def get_order_data_fbo(order, product_, base_dict, acquiring=1.5):
     order_profitability = round(order_profit / order_price * 100, 1)
 
     data = {
-        'name': product_.get('name', ''),
+        'name': product.get('name', ''),
         'nm_id': nm_id,
-        'article': product_.get('article', ''),
+        'article': product.get('article', ''),
         'stock': base_dict.get('ms_stocks_dict', {}).get(nm_id, 0),
-        'order_create': order['date'],
-        'order_name': order['sticker'],
+        'order_create': order.get('date', ''),
+        'order_name': order.get('sticker', '0'),
         'quantity': 1,
         'discount': discount,
         'item_price': price,
