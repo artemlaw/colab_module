@@ -10,7 +10,8 @@ def get_api_tokens():
         return MS_API_TOKEN, WB_API_TOKEN
     except ImportError:
         pass
-
+    from dotenv import load_dotenv
+    load_dotenv()
     MS_API_TOKEN = os.getenv('MS_API_TOKEN')
     WB_API_TOKEN = os.getenv('WB_API_TOKEN')
 

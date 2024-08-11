@@ -14,7 +14,7 @@ class MoySklad(ApiBase):
     def fetch_data(self, url, params):
         items = []
         while True:
-            result = self.get_data(url, params)
+            result = self.get(url, params)
             if result:
                 response_json = result.json()
                 items += response_json.get('rows', [])
@@ -33,7 +33,7 @@ class MoySklad(ApiBase):
     def update_product(self, product):
         url = f'{self.host}entity/product/{product.get("id")}'
 
-        result = self.put_data(url, data=product)
+        result = self.put(url, data=product)
         response_json = result.json() if result else []
         if not result:
             logger.error('Не удалось обновить номенклатуру.')
@@ -46,7 +46,7 @@ class MoySklad(ApiBase):
 
     def update_bundle(self, bundle):
         url = f'{self.host}entity/bundle/{bundle.get("id")}'
-        result = self.put_data(url, data=bundle)
+        result = self.put(url, data=bundle)
         response_json = result.json() if result else []
         if not result:
             logger.error('Не удалось обновить товар.')
@@ -86,7 +86,7 @@ class MoySklad(ApiBase):
               }
             }
         }
-        result = self.post_data(url, data=data)
+        result = self.post(url, data=data)
         if result:
             response_content = result.content
         else:
@@ -105,7 +105,7 @@ class MoySklad(ApiBase):
         url = f'{self.host}report/stock/all/current'
         # 'include': 'zeroLines' - показать товары с нулевым доступным остатком
         params = {'stockType': 'quantity', 'include': 'zeroLines'}  # по умолчанию params = {'stockType': 'quantity'}
-        result = self.get_data(url, params)
+        result = self.get(url, params)
         response_json = result.json() if result else []
         if not result:
             logger.error('Не удалось получить данные о наличии.')

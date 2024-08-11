@@ -14,8 +14,8 @@ class WB(ApiBase):
 
     def get_commission(self):
         logger.info(f'Получение комиссий по категориям')
-        url = 'https://common-api.wildberries.ru/api/v1/tariffs/commission?locale=ru'
-        result = self.get_data(url)
+        url = 'https://common-api.wildberries.ru/api/v1/tariffs/commission'
+        result = self.get(url, {'locale': 'ru'})
         response_json = result.json() if result else []
         if not result:
             logger.error('Не удалось получить данные о комиссиях.')
@@ -26,7 +26,7 @@ class WB(ApiBase):
         url = 'https://common-api.wildberries.ru/api/v1/tariffs/box'
         current_date = datetime.now().strftime('%Y-%m-%d')
         params = {'date': current_date}
-        result = self.get_data(url, params)
+        result = self.get(url, params)
         response_json = result.json() if result else []
         if not result:
             logger.error('Не удалось получить данные о тарифах логистики.')
@@ -39,7 +39,7 @@ class WB(ApiBase):
 
         products_list = []
         while True:
-            result = self.get_data(url, params)
+            result = self.get(url, params)
             if result:
                 response_json = result.json()
                 list_goods = response_json.get('data', {}).get('listGoods', [])
@@ -56,7 +56,7 @@ class WB(ApiBase):
     def get_orders(self, from_data):
         url = 'https://statistics-api.wildberries.ru/api/v1/supplier/orders'
         params = {'dateFrom': from_data, 'flag': 1}
-        result = self.get_data(url, params)
+        result = self.get(url, params)
         response_json = result.json() if result else []
         if not result:
             logger.error('Не удалось получить данные о заказах.')
@@ -72,7 +72,7 @@ class WB(ApiBase):
 
         orders_fbs = []
         while True:
-            result = self.get_data(url, params)
+            result = self.get(url, params)
             if result:
                 response_json = result.json()
                 orders_list = response_json.get('orders')
