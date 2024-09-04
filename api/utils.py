@@ -246,7 +246,6 @@ def wb_get_orders(wb_client: WB, start_of_day: str, end_of_day: str):
         if i < total_dates - 1:
             time.sleep(20)
 
-    print('Получили заказы WB за период', len(wb_orders))
     # Запас +/- 3ч - 10800( 6ч - 21600)
     wb_orders_fbs = wb_client.get_orders_fbs(from_date=from_date_for_fbs - 10800, to_date=to_date_for_fbs + 10800)
     rids = {order_fbs.get('rid') for order_fbs in wb_orders_fbs}
@@ -272,10 +271,14 @@ def wb_get_orders(wb_client: WB, start_of_day: str, end_of_day: str):
             else:
                 orders_fbo_cancel.append(order)
 
-    print('Заказов FBS отмененных', len(orders_fbs_cancel))
-    print('Заказов FBO отмененных', len(orders_fbo_cancel))
-    print('Заказов FBS', len(orders_fbs))
-    print('Заказов FBO', len(orders_fbo))
+    print(f"{'Модель':<15}{'Количество':<10}")
+    print('-' * 25)
+    print(f"{'FBS':<15}{len(orders_fbs):<10}")
+    print(f"{'FBS отмены':<15}{len(orders_fbs_cancel):<10}")
+    print(f"{'FBO':<15}{len(orders_fbo):<10}")
+    print(f"{'FBO отмены':<15}{len(orders_fbo_cancel):<10}")
+    print('-' * 25)
+    print(f"{'Всего заказов':<15}{len(wb_orders):<10}")
 
     return orders_fbs, orders_fbo
 
