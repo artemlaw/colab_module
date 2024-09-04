@@ -92,7 +92,7 @@ def find_warehouse_by_name(warehouses: list, name: str) -> dict | None:
     return next((warehouse for warehouse in warehouses if warehouse['warehouseName'] == name), None)
 
 
-def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Маркетплейс'):
+def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Маркетплейс') -> dict:
     tariff = find_warehouse_by_name(tariffs_data['response']['data']['warehouseList'], warehouse_name)
     if not tariff:
         tariff = find_warehouse_by_name(tariffs_data['response']['data']['warehouseList'], 'Коледино')
@@ -285,6 +285,7 @@ def wb_get_orders(wb_client: WB, start_of_day: str, end_of_day: str):
     print(f"{'FBO отмены':<15}{len(orders_fbo_cancel):<10}")
     print('-' * 25)
     print(f"{'Всего заказов':<15}{len(wb_orders):<10}")
+    print(f"{'Всего без отмены':<15}{len(wb_orders) - len(orders_fbs_cancel) - len(orders_fbo_cancel):<10}")
 
     return orders_fbs, orders_fbo
 
