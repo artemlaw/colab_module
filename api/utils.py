@@ -178,10 +178,12 @@ def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float
     category = order.get('subject', attributes_dict["Категория товара"])
 
     # TODO: Добавить уведомление об отсутствии данных
-    commission = base_dict.get('category_dict', {}).get(category)
-    if not commission:
-        print('Не удалось определить комиссию по категории', category, 'по умолчанию указано 30%')
-        commission = 30
+    commissions = base_dict.get('category_dict', {}).get(category)
+    if not commissions:
+        print('Не удалось определить комиссию по категории', category, 'по умолчанию указал 30%')
+        commission = 30.0
+    else:
+        commission = commissions[0] if fbs else commissions[1]
 
     commission_cost = round(commission / 100 * price, 1)
     acquiring_cost = round(acquiring / 100 * price, 1)
