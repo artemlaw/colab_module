@@ -10,7 +10,7 @@ class WB(ApiBase):
     def __init__(self, api_key: str):
         super().__init__()
         self.headers = {'Authorization': api_key, 'Content-Type': 'application/json'}
-        self.host = 'https://suppliers-api.wildberries.ru/'
+        self.host = 'https://marketplace-api.wildberries.ru/'
 
     def get_commission(self):
         logger.info(f'Получение комиссий по категориям')

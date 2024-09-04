@@ -1,5 +1,9 @@
 import os
 import re
+import time
+from datetime import datetime, timedelta
+
+from api import WB
 
 
 def get_api_tokens():
@@ -213,3 +217,69 @@ def get_order_data_fbo(order, product, base_dict, acquiring=1.5):
     }
 
     return data
+
+
+def get_date_for_request(start_date_str: str, end_date_str: str) -> tuple[tuple, int, int]:
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+
+    from_date_for_fbs = int(start_date.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+
+    if start_date == end_date:
+        return (start_date_str,), from_date_for_fbs, int(
+            start_date.replace(hour=23, minute=59, second=59, microsecond=999999).timestamp())
+
+    from_date_for_fbo = tuple(
+        (start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range((end_date - start_date).days + 1))
+
+    to_date_for_fbs = int(end_date.replace(hour=23, minute=59, second=59, microsecond=999999).timestamp())
+
+    return from_date_for_fbo, from_date_for_fbs, to_date_for_fbs
+
+
+def wb_get_orders(wb_client: WB, start_of_day: str, end_of_day: str):
+    fbo_tuple_from_date, from_date_for_fbs, to_date_for_fbs = get_date_for_request(start_of_day, end_of_day)
+    wb_orders = []
+    total_dates = len(fbo_tuple_from_date)
+    for i, from_date in enumerate(fbo_tuple_from_date):
+        wb_orders.extend(wb_client.get_orders(from_date))
+        if i < total_dates - 1:
+            time.sleep(20)
+
+    print('Получили заказы WB за период', len(wb_orders))
+    # Запас +/- 3ч - 10800( 6ч - 21600)
+    wb_orders_fbs = wb_client.get_orders_fbs(from_date=from_date_for_fbs - 10800, to_date=to_date_for_fbs + 10800)
+    rids = {order_fbs.get('rid') for order_fbs in wb_orders_fbs}
+
+    orders_fbs_cancel = []
+    orders_fbo_cancel = []
+    orders_fbs = []
+    orders_fbo = []
+
+    for order in wb_orders:
+        srid = order.get('srid')
+        order_type = order.get('orderType')
+        is_cancel = order.get('isCancel')
+
+        if order_type == 'Клиентский' and not is_cancel:
+            if order.get('srid') in rids:
+                orders_fbs.append(order)
+            else:
+                orders_fbo.append(order)
+        else:
+            if srid in rids:
+                orders_fbs_cancel.append(order)
+            else:
+                orders_fbo_cancel.append(order)
+
+    print('Заказов FBS отмененных', len(orders_fbs_cancel))
+    print('Заказов FBO отмененных', len(orders_fbo_cancel))
+    print('Заказов FBS', len(orders_fbs))
+    print('Заказов FBO', len(orders_fbo))
+
+    return orders_fbs, orders_fbo
+
+
+if __name__ == '__main__':
+    dates = get_date_for_request('2024-08-30', '2024-09-01')
+    print(dates)
