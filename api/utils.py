@@ -3,10 +3,10 @@ import re
 import time
 from datetime import datetime, timedelta
 
-from api import WB
+from api import WB, MoySklad
 
 
-def get_api_tokens():
+def get_api_tokens() -> (str, str):
     try:
         from google.colab import userdata
         MS_API_TOKEN = userdata.get('MS_API_TOKEN')
@@ -22,17 +22,12 @@ def get_api_tokens():
     return MS_API_TOKEN, WB_API_TOKEN
 
 
-def get_category_dict(wb_client, fbs=True):
+def get_category_dict(wb_client: WB) -> dict:
     commission = wb_client.get_commission()
-    if fbs:
-        key = 'kgvpMarketplace'
-    else:
-        key = 'paidStorageKgvp'
-    category_dict = {comm['subjectName']: comm[key] for comm in commission['report']}
-    return category_dict
+    return {comm['subjectName']: (comm['kgvpMarketplace'], comm['paidStorageKgvp']) for comm in commission['report']}
 
 
-def get_product_id_from_url(url):
+def get_product_id_from_url(url: str) -> str | None:
     pattern = r'/product/([0-9a-fA-F-]+)'
     match = re.search(pattern, url)
     if match:
@@ -41,7 +36,7 @@ def get_product_id_from_url(url):
         return None
 
 
-def get_stock_for_bundle(stocks_dict, product):
+def get_stock_for_bundle(stocks_dict: dict, product: list) -> float:
     product_bundles = product['components']['rows']
     product_stock = 0.0
     for bundle in product_bundles:
@@ -53,7 +48,7 @@ def get_stock_for_bundle(stocks_dict, product):
     return product_stock
 
 
-def get_ms_stocks_dict(ms_client, products):
+def get_ms_stocks_dict(ms_client: MoySklad, products: list) -> dict:
     print('Получение остатков номенклатуры')
     stocks = ms_client.get_stock()
     stocks_dict = {stock['assortmentId']: stock['quantity'] for stock in stocks}
@@ -61,7 +56,7 @@ def get_ms_stocks_dict(ms_client, products):
     return wb_stocks_dict
 
 
-def get_price_dict(wb_client):
+def get_price_dict(wb_client: WB) -> dict:
     data = wb_client.get_product_prices()
     # TODO: Добавить возможность получения данных по другим размерам, либо изменить источник
     price_dict = {d['nmID']: {'price': d['sizes'][0]['discountedPrice'], 'discount': d['discount']} for d in data
@@ -69,9 +64,9 @@ def get_price_dict(wb_client):
     return price_dict
 
 
-def get_dict_for_report(products, ms_client, wb_client, fbs=True):
+def get_dict_for_report(products: list, ms_client: MoySklad, wb_client: WB) -> dict:
     # TODO: Переписать на асинхронные запросы
-    category_dict = get_category_dict(wb_client, fbs=fbs)
+    category_dict = get_category_dict(wb_client)
     tariffs_logistic_data = wb_client.get_tariffs_for_box()
     ms_stocks_dict = get_ms_stocks_dict(ms_client, products)
     wb_prices_dict = get_price_dict(wb_client)
@@ -84,7 +79,7 @@ def get_dict_for_report(products, ms_client, wb_client, fbs=True):
     }
 
 
-def create_code_index(elements):
+def create_code_index(elements: list) -> dict:
     code_index = {}
     for element in elements:
         code = int(element.get('code'))
@@ -93,11 +88,11 @@ def create_code_index(elements):
     return code_index
 
 
-def find_warehouse_by_name(warehouses, name):
+def find_warehouse_by_name(warehouses: list, name: str) -> dict | None:
     return next((warehouse for warehouse in warehouses if warehouse['warehouseName'] == name), None)
 
 
-def get_logistic_dict(tariffs_data, warehouse_name='Маркетплейс'):
+def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Маркетплейс'):
     tariff = find_warehouse_by_name(tariffs_data['response']['data']['warehouseList'], warehouse_name)
     if not tariff:
         tariff = find_warehouse_by_name(tariffs_data['response']['data']['warehouseList'], 'Коледино')
@@ -105,14 +100,14 @@ def get_logistic_dict(tariffs_data, warehouse_name='Маркетплейс'):
     logistic_dict = {
         'KTR': 1.0,
         'TARIFF_FOR_BASE_L': float(tariff['boxDeliveryBase'].replace(',', '.')),
-        'TARIFF_BASE': 1,
+        'TARIFF_BASE': 1.0,
         'TARIFF_OVER_BASE': float(tariff['boxDeliveryLiter'].replace(',', '.')),
         'WH_COEFFICIENT': round(float(tariff['boxDeliveryAndStorageExpr'].replace(',', '.')) / 100, 2)
     }
     return logistic_dict
 
 
-def create_prices_dict(prices_list):
+def create_prices_dict(prices_list: list) -> dict:
     prices_dict = {}
     for price in prices_list:
         name = price['priceType']['name']
@@ -121,7 +116,7 @@ def create_prices_dict(prices_list):
     return prices_dict
 
 
-def create_attributes_dict(attributes_list):
+def create_attributes_dict(attributes_list: list) -> dict:
     attributes_dict = {}
     for attribute in attributes_list:
         name = attribute['name']
@@ -130,20 +125,25 @@ def create_attributes_dict(attributes_list):
     return attributes_dict
 
 
-def get_product_volume(attributes_dict):
+def get_product_volume(attributes_dict: dict) -> float:
     return ((attributes_dict.get('Длина', 0) * attributes_dict.get('Ширина', 0) * attributes_dict.get('Высота', 0))
             / 1000.0)
 
 
-def get_logistics(KTR, TARIFF_FOR_BASE_L, TARIFF_BASE, TARIFF_OVER_BASE, WH_COEFFICIENT, volume):
-    volume_calc = max(volume - TARIFF_BASE, 0)
-    logistics = round((TARIFF_FOR_BASE_L * TARIFF_BASE + TARIFF_OVER_BASE * volume_calc) * WH_COEFFICIENT * KTR, 2)
+# TODO: Проверять на актуальность
+def get_logistics(ktr: float, tariff_for_base_l: float, tariff_base: float, tariff_over_base: float,
+                  wh_coefficient: float, volume: float) -> float:
+    volume_calc = max(volume - tariff_base, 0)
+    logistics = round((tariff_for_base_l * tariff_base + tariff_over_base * volume_calc) * wh_coefficient * ktr, 2)
     return logistics
 
 
-def get_order_data_fbo(order, product, base_dict, acquiring=1.5):
+def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float = 1.5, fbs: bool = True) -> dict:
     wb_prices_dict = base_dict['wb_prices_dict']
-    logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name=order.get('warehouseName', 'Коледино'))
+    if fbs:
+        logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name='Маркетплейс')
+    else:
+        logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name=order.get('warehouseName', 'Коледино'))
 
     nm_id = order.get('nmId', '')
     sale_prices = product.get('salePrices', [])
@@ -176,8 +176,12 @@ def get_order_data_fbo(order, product, base_dict, acquiring=1.5):
                               logistic_dict['TARIFF_OVER_BASE'], logistic_dict['WH_COEFFICIENT'], volume)
 
     category = order.get('subject', attributes_dict["Категория товара"])
-    # Поставил 30% комиссии по умолчанию, если не найдено
-    commission = base_dict.get('category_dict', {}).get(category, 30)
+
+    # TODO: Добавить уведомление об отсутствии данных
+    commission = base_dict.get('category_dict', {}).get(category)
+    if not commission:
+        print('Не удалось определить комиссию по категории', category, 'по умолчанию указано 30%')
+        commission = 30
 
     commission_cost = round(commission / 100 * price, 1)
     acquiring_cost = round(acquiring / 100 * price, 1)
