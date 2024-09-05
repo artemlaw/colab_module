@@ -199,13 +199,15 @@ def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float
     order_profit = round(order_price - cost_price - order_reward, 1)
     order_profitability = round(order_profit / order_price * 100, 1)
 
+    model = 'FBS_' if fbs else 'FBO_'
+
     data = {
         'name': product.get('name', ''),
         'nm_id': nm_id,
         'article': product.get('article', ''),
         'stock': base_dict.get('ms_stocks_dict', {}).get(nm_id, 0),
         'order_create': order.get('date', ''),
-        'order_name': order.get('sticker', '0'),
+        'order_name': model + order.get('sticker', '0'),
         'quantity': 1,
         'discount': discount,
         'item_price': price,
