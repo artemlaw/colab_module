@@ -134,6 +134,8 @@ def get_product_volume(attributes_dict: dict) -> float:
 def get_logistics(ktr: float, tariff_for_base_l: float, tariff_base: float, tariff_over_base: float,
                   wh_coefficient: float, volume: float) -> float:
     volume_calc = max(volume - tariff_base, 0)
+    # Коэффициент логистики склада wh_coefficient стал в показателях уже применен
+    wh_coefficient = 1.0
     logistics = round((tariff_for_base_l * tariff_base + tariff_over_base * volume_calc) * wh_coefficient * ktr, 2)
     return logistics
 
