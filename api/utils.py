@@ -179,7 +179,6 @@ def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float
 
     category = order.get('subject', attributes_dict["Категория товара"])
 
-    # TODO: Добавить уведомление об отсутствии данных
     commissions = base_dict.get('category_dict', {}).get(category)
     if not commissions:
         print('Не удалось определить комиссию по категории', category, 'по умолчанию указал 30%')
