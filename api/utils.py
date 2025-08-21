@@ -92,18 +92,27 @@ def find_warehouse_by_name(warehouses: list, name: str) -> dict | None:
     return next((warehouse for warehouse in warehouses if warehouse['warehouseName'] == name), None)
 
 
-def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Маркетплейс') -> dict:
+def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Маркетплейс: Центральный федеральный округ') -> dict:
     tariff = find_warehouse_by_name(tariffs_data['response']['data']['warehouseList'], warehouse_name)
     if not tariff:
         tariff = find_warehouse_by_name(tariffs_data['response']['data']['warehouseList'], 'Коледино')
+
+    tariff_for_base_l = tariff['boxDeliveryBase'] \
+        if tariff['boxDeliveryBase'] != '-' else tariff['boxDeliveryMarketplaceBase']
+    tariff_over_base = tariff['boxDeliveryLiter'] \
+        if tariff['boxDeliveryLiter'] != '-' else tariff['boxDeliveryMarketplaceLiter']
+    wb_coefficient = tariff['boxDeliveryCoefExpr'] \
+        if tariff['boxDeliveryCoefExpr'] != '-' else tariff['boxDeliveryMarketplaceCoefExpr']
+
     # Логистика
     logistic_dict = {
         'KTR': 1.0,
-        'TARIFF_FOR_BASE_L': float(tariff['boxDeliveryBase'].replace(',', '.')),
-        'TARIFF_BASE': 1.0,
-        'TARIFF_OVER_BASE': float(tariff['boxDeliveryLiter'].replace(',', '.')),
-        'WH_COEFFICIENT': round(float(tariff['boxDeliveryAndStorageExpr'].replace(',', '.')) / 100, 2)
+        'TARIFF_FOR_BASE_L': float(tariff_for_base_l.replace(',', '.')),
+        'TARIFF_BASE': 1,
+        'TARIFF_OVER_BASE': float(tariff_over_base.replace(',', '.')),
+        'WH_COEFFICIENT': round(float(wb_coefficient.replace(',', '.')) / 100, 2)
     }
+
     return logistic_dict
 
 
@@ -143,7 +152,7 @@ def get_logistics(ktr: float, tariff_for_base_l: float, tariff_base: float, tari
 def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float = 1.5, fbs: bool = True) -> dict:
     wb_prices_dict = base_dict['wb_prices_dict']
     if fbs:
-        logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name='Маркетплейс')
+        logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name='Маркетплейс: Центральный федеральный округ')
     else:
         logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name=order.get('warehouseName', 'Коледино'))
 
