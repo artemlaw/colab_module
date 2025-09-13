@@ -185,8 +185,10 @@ def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float
 
     logistics = get_logistics(logistic_dict['KTR'], logistic_dict['TARIFF_FOR_BASE_L'], logistic_dict['TARIFF_BASE'],
                               logistic_dict['TARIFF_OVER_BASE'], logistic_dict['WH_COEFFICIENT'], volume)
-
-    category = order.get('subject', attributes_dict["Категория товара"])
+    category_name = attributes_dict.get('Категория товара')
+    if not category_name:
+        print('Не удалось определить категорию товара', nm_id)
+    category = order.get('subject', category_name)
 
     commissions = base_dict.get('category_dict', {}).get(category)
     if not commissions:
