@@ -93,26 +93,42 @@ def find_warehouse_by_name(warehouses: list, name: str) -> dict | None:
 
 
 def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Маркетплейс: Центральный федеральный округ') -> dict:
-    tariff = find_warehouse_by_name(tariffs_data['response']['data']['warehouseList'], warehouse_name)
+    tariff = find_warehouse_by_name(warehouses=tariffs_data['response']['data']['warehouseList'], name=warehouse_name)
     if not tariff:
-        tariff = find_warehouse_by_name(tariffs_data['response']['data']['warehouseList'], 'Коледино')
+        tariff = find_warehouse_by_name(warehouses=tariffs_data['response']['data']['warehouseList'], name='Коледино')
 
-    tariff_for_base_l = tariff['boxDeliveryBase'] \
+    # boxDeliveryBase, boxDeliveryMarketplaceBase - Логистика, первый литр, ₽
+    # boxDeliveryLiter, boxDeliveryMarketplaceLiter - Логистика, дополнительный литр, ₽
+    # boxDeliveryCoefExpr, boxDeliveryMarketplaceCoefExpr - Коэффициент Логистика, %.
+    # На него умножается стоимость логистики. Уже учтён в тарифах
+
+    # Применение fbs для подтягивания тарифа FBS по складу FBW
+    logistics_first_liter = tariff['boxDeliveryBase'] \
         if tariff['boxDeliveryBase'] != '-' else tariff['boxDeliveryMarketplaceBase']
-    tariff_over_base = tariff['boxDeliveryLiter'] \
+    logistics_extra_liter = tariff['boxDeliveryLiter'] \
         if tariff['boxDeliveryLiter'] != '-' else tariff['boxDeliveryMarketplaceLiter']
-    wb_coefficient = tariff['boxDeliveryCoefExpr'] \
+    logistics_coefficient = tariff['boxDeliveryCoefExpr'] \
         if tariff['boxDeliveryCoefExpr'] != '-' else tariff['boxDeliveryMarketplaceCoefExpr']
+
+    # Вырезать показатели после изменения использования метода
+    # tariff_for_base_l = tariff['boxDeliveryBase'] \
+    #     if tariff['boxDeliveryBase'] != '-' else tariff['boxDeliveryMarketplaceBase']
+    # tariff_over_base = tariff['boxDeliveryLiter'] \
+    #     if tariff['boxDeliveryLiter'] != '-' else tariff['boxDeliveryMarketplaceLiter']
+    # wb_coefficient = tariff['boxDeliveryCoefExpr'] \
+    #     if tariff['boxDeliveryCoefExpr'] != '-' else tariff['boxDeliveryMarketplaceCoefExpr']
 
     # Логистика
     logistic_dict = {
         'KTR': 1.0,
-        'TARIFF_FOR_BASE_L': float(tariff_for_base_l.replace(',', '.')),
-        'TARIFF_BASE': 1,
-        'TARIFF_OVER_BASE': float(tariff_over_base.replace(',', '.')),
-        'WH_COEFFICIENT': round(float(wb_coefficient.replace(',', '.')) / 100, 2)
+        'TARIFF_BASE': 1.0,
+        # 'TARIFF_FOR_BASE_L': float(tariff_for_base_l.replace(',', '.')),
+        # 'TARIFF_OVER_BASE': float(tariff_over_base.replace(',', '.')),
+        # 'WH_COEFFICIENT': round(float(wb_coefficient.replace(',', '.')) / 100, 2),
+        'LOGISTICS_FIRST_LITER': float(logistics_first_liter.replace(',', '.')),
+        'LOGISTICS_EXTRA_LITER': float(logistics_extra_liter.replace(',', '.')),
+        'LOGISTICS_COEFFICIENT': round(float(logistics_coefficient.replace(',', '.')) / 100, 2)
     }
-
     return logistic_dict
 
 
@@ -139,14 +155,43 @@ def get_product_volume(attributes_dict: dict) -> float:
             / 1000.0)
 
 
-# TODO: Проверять на актуальность
-def get_logistics(ktr: float, tariff_for_base_l: float, tariff_base: float, tariff_over_base: float,
-                  wh_coefficient: float, volume: float) -> float:
-    volume_calc = max(volume - tariff_base, 0)
-    # Коэффициент логистики склада wh_coefficient стал в показателях уже применен
-    wh_coefficient = 1.0
-    logistics = round((tariff_for_base_l * tariff_base + tariff_over_base * volume_calc) * wh_coefficient * ktr, 2)
-    return logistics
+def get_logistics_for_one_liter(ktr: float, logistics_first_liter: float, logistics_extra_liter: float, volume: float) \
+        -> float:
+    volume_calc = max(volume - 1, 0)
+    return round((logistics_first_liter + logistics_extra_liter * volume_calc) * ktr, 2)
+
+
+# TODO: WB - Проверять на актуальность расчет логистики
+def get_logistics(ktr: float, logistics_coefficient: float, logistics_first_liter: float, logistics_extra_liter: float,
+                  volume: float) -> float:
+    """
+    Тариф на логистику
+    от 0,001 до 0,200 литра — 23₽ за литр;
+    от 0,201 до 0,400 литра — 26₽ за литр;
+    от 0,401 до 0,600 литра — 29₽ за литр;
+    от 0,601 до 0,800 литра — 30₽ за литр;
+    от 0,801 до 1,000 литра — 32₽ за литр.
+
+    Для товаров с объёмом более 1 литра:
+    стоимость первого литра 46₽,
+    стоимость каждого дополнительного литра 14₽.
+    """
+    volume_steps = [
+        (0.001, 0.200, 23.0),
+        (0.201, 0.400, 26.0),
+        (0.401, 0.600, 29.0),
+        (0.601, 0.800, 30.0),
+        (0.801, 0.999, 32.0)
+    ]
+
+    if volume > 1.0:
+        return get_logistics_for_one_liter(ktr, logistics_first_liter, logistics_extra_liter, volume)
+
+    for min_vol, max_vol, value in volume_steps:
+        if min_vol <= volume <= max_vol:
+            return value * logistics_coefficient
+
+    return logistics_first_liter
 
 
 def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float = 1.5, fbs: bool = True) -> dict:
@@ -183,8 +228,11 @@ def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float
     attributes_dict = create_attributes_dict(attributes)
     volume = get_product_volume(attributes_dict)
 
-    logistics = get_logistics(logistic_dict['KTR'], logistic_dict['TARIFF_FOR_BASE_L'], logistic_dict['TARIFF_BASE'],
-                              logistic_dict['TARIFF_OVER_BASE'], logistic_dict['WH_COEFFICIENT'], volume)
+    logistics = get_logistics(ktr=logistic_dict['KTR'], volume=volume,
+                              logistics_coefficient=logistic_dict['LOGISTICS_COEFFICIENT'],
+                              logistics_first_liter=logistic_dict['LOGISTICS_FIRST_LITER'],
+                              logistics_extra_liter=logistic_dict['LOGISTICS_EXTRA_LITER'])
+
     category_name = attributes_dict.get('Категория товара')
     if not category_name:
         print('Не удалось определить категорию товара', nm_id)
