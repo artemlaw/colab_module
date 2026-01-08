@@ -194,7 +194,7 @@ def get_logistics(ktr: float, logistics_coefficient: float, logistics_first_lite
     return logistics_first_liter
 
 
-def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float = 1.5, fbs: bool = True) -> dict:
+def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float = 2.0, fbs: bool = True) -> dict:
     wb_prices_dict = base_dict['wb_prices_dict']
     if fbs:
         logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name='Маркетплейс: Центральный федеральный округ')
