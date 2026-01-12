@@ -79,13 +79,11 @@ def get_dict_for_report(products: list, ms_client: MoySklad, wb_client: WB) -> d
     }
 
 
-def create_code_index(elements: list) -> dict:
-    code_index = {}
-    for element in elements:
-        code = int(element.get('code'))
-        if code:
-            code_index[code] = element
-    return code_index
+def create_code_index(elements: list, project: str = 'WB') -> dict:
+    if project == 'WB':
+        return {int(element.get('code')): element for element in elements if element.get('code')}
+    else:
+        return {element.get('article'): element for element in elements if element.get('article')}
 
 
 def find_warehouse_by_name(warehouses: list, name: str) -> dict | None:
