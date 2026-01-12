@@ -80,13 +80,13 @@ def get_dict_for_report(products: list, ms_client: MoySklad, wb_client: WB) -> d
 
 
 def create_code_index(elements: list, project: str = 'WB') -> dict:
-    products_for_project = [
-        product for product in elements if project in product.get('pathName', '')
+    elements_for_project = [
+        element for element in elements if project in element.get('pathName', '')
     ]
-
-    product_key = 'code' if project == 'WB' else 'article'
-
-    return {getattr(product, product_key): product for product in products_for_project}
+    if project == 'WB':
+        return {int(product.get('code')): product for product in elements_for_project}
+    else:
+        return {product.get('article'): product for product in elements_for_project}
 
 
 def find_warehouse_by_name(warehouses: list, name: str) -> dict | None:
