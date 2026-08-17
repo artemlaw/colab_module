@@ -89,10 +89,10 @@ def find_warehouse_by_name(warehouses: list, name: str) -> dict | None:
     return next((warehouse for warehouse in warehouses if warehouse['warehouseName'] == name), None)
 
 
-def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Маркетплейс: Центральный федеральный округ') -> dict:
+def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Свой склад РФ') -> dict:
     tariff = find_warehouse_by_name(warehouses=tariffs_data['response']['data']['warehouseList'], name=warehouse_name)
     if not tariff:
-        tariff = find_warehouse_by_name(warehouses=tariffs_data['response']['data']['warehouseList'], name='Коледино')
+        tariff = find_warehouse_by_name(warehouses=tariffs_data['response']['data']['warehouseList'], name='Свой склад РФ')
 
     # boxDeliveryBase, boxDeliveryMarketplaceBase - Логистика, первый литр, ₽
     # boxDeliveryLiter, boxDeliveryMarketplaceLiter - Логистика, дополнительный литр, ₽
@@ -100,20 +100,20 @@ def get_logistic_dict(tariffs_data: dict, warehouse_name: str = 'Маркетп�
     # На него умножается стоимость логистики. Уже учтён в тарифах
 
     # Применение fbs для подтягивания тарифа FBS по складу FBW
+    # logistics_first_liter = tariff['boxDeliveryBase'] \
+    #     if tariff['boxDeliveryBase'] != '-' else tariff['boxDeliveryMarketplaceBase']
+    # logistics_extra_liter = tariff['boxDeliveryLiter'] \
+    #     if tariff['boxDeliveryLiter'] != '-' else tariff['boxDeliveryMarketplaceLiter']
+    # logistics_coefficient = tariff['boxDeliveryCoefExpr'] \
+    #     if tariff['boxDeliveryCoefExpr'] != '-' else tariff['boxDeliveryMarketplaceCoefExpr']
+
+    # Так как идет единое представление FBW и FBS то за основу взяты показатели FBS, где не равно '-'
     logistics_first_liter = tariff['boxDeliveryBase'] \
         if tariff['boxDeliveryBase'] != '-' else tariff['boxDeliveryMarketplaceBase']
     logistics_extra_liter = tariff['boxDeliveryLiter'] \
         if tariff['boxDeliveryLiter'] != '-' else tariff['boxDeliveryMarketplaceLiter']
     logistics_coefficient = tariff['boxDeliveryCoefExpr'] \
         if tariff['boxDeliveryCoefExpr'] != '-' else tariff['boxDeliveryMarketplaceCoefExpr']
-
-    # Вырезать показатели после изменения использования метода
-    # tariff_for_base_l = tariff['boxDeliveryBase'] \
-    #     if tariff['boxDeliveryBase'] != '-' else tariff['boxDeliveryMarketplaceBase']
-    # tariff_over_base = tariff['boxDeliveryLiter'] \
-    #     if tariff['boxDeliveryLiter'] != '-' else tariff['boxDeliveryMarketplaceLiter']
-    # wb_coefficient = tariff['boxDeliveryCoefExpr'] \
-    #     if tariff['boxDeliveryCoefExpr'] != '-' else tariff['boxDeliveryMarketplaceCoefExpr']
 
     # Логистика
     logistic_dict = {
@@ -194,9 +194,9 @@ def get_logistics(ktr: float, logistics_coefficient: float, logistics_first_lite
 def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float = 2.0, fbs: bool = True) -> dict:
     wb_prices_dict = base_dict['wb_prices_dict']
     if fbs:
-        logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name='Маркетплейс: Центральный федеральный округ')
+        logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name='Свой склад РФ')
     else:
-        logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name=order.get('warehouseName', 'Коледино'))
+        logistic_dict = get_logistic_dict(base_dict['tariffs_data'], warehouse_name=order.get('warehouseName', 'Свой склад РФ'))
 
     nm_id = order.get('nmId', '')
     sale_prices = product.get('salePrices', [])
