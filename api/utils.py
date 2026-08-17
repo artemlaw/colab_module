@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from api import WB, MoySklad
 
+FBS_COMMISSION = -3.5  # Принудительное повышение/понижение комиссии FBS на 0.0% над FBO
 
 def get_api_tokens() -> (str, str):
     try:
@@ -240,7 +241,7 @@ def get_order_data(order: dict, product: dict, base_dict: dict, acquiring: float
         print('Не удалось определить комиссию по категории', category, 'по умолчанию указал 30%')
         commission = 30.0
     else:
-        commission = commissions[0] if fbs else commissions[1]
+        commission = commissions[0] + FBS_COMMISSION if fbs else commissions[1]
 
     commission_cost = round(commission / 100 * price, 1)
     acquiring_cost = round(acquiring / 100 * price, 1)
